@@ -10,9 +10,8 @@ CREATE TABLE sensor_readings (
     unit VARCHAR(20),
     battery_level INTEGER,
     signal_strength INTEGER,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_sensor_timestamp (sensor_id, timestamp),
-    INDEX idx_sensor_type (sensor_type)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -- Indexes are created after the table for PostgreSQL compatibility
 );
 
 CREATE TABLE alerts (
@@ -42,3 +41,7 @@ CREATE TABLE aggregated_stats (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(sensor_id, window_start)
 );
+
+-- PostgreSQL-compatible index creations
+CREATE INDEX idx_sensor_timestamp ON sensor_readings (sensor_id, timestamp);
+CREATE INDEX idx_sensor_type ON sensor_readings (sensor_type);
