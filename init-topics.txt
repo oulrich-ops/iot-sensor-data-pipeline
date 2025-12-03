@@ -25,3 +25,8 @@
   --bootstrap-server broker:29092 \
   --topic iot-sensor-data \
   --from-beginning
+
+#pour supprimer un topic
+/opt/kafka/bin/kafka-topics.sh \
+  --bootstrap-server broker:29092 \
+  --delete --topic "nom_du_topic"
