@@ -24,6 +24,7 @@ services:
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     volumes:
       - kafka-data:/var/lib/kafka/data
+     
 
   # PostgreSQL
   postgres:

@@ -1,0 +1,27 @@
+#Commandes à executer en étant depuis le conteneur
+
+
+#pour creer les topic
+/opt/kafka/bin/kafka-topics.sh \
+  --create \
+  --bootstrap-server broker:29092 \
+  --replication-factor 1 \
+  --partitions 3 \
+  --topic iot-sensor-data
+
+/opt/kafka/bin/kafka-topics.sh \
+  --create \
+  --bootstrap-server broker:29092 \
+  --replication-factor 1 \
+  --partitions 3 \
+  --topic iot-alert
+
+#pour lister les topics
+ /opt/kafka/bin/kafka-topics.sh --bootstrap-server broker:29092 --list
+
+#pour lire le contenu d'un topic
+
+/opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server broker:29092 \
+  --topic iot-sensor-data \
+  --from-beginning
