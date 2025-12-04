@@ -3,11 +3,12 @@ import random
 import time
 from datetime import datetime
 from kafka import KafkaProducer
+import math
 
 # === Configuration des bâtiments, étages et pièces ===
-buildings = ["A", "B", "C"]
-floors = range(1, 6)
-rooms = range(100, 106)  # quelques rooms par étage pour l'exemple
+buildings = ["A"]
+floors = range(1, 3)
+rooms = range(100, 104)
 sensor_types = ["temperature", "humidity", "pressure"]
 
 # === Classe représentant un capteur ===
@@ -18,19 +19,41 @@ class IoTSensor:
         self.building = building
         self.floor = floor
         self.room = room
+        self.phase = random.uniform(0, 2 * math.pi)
+        # Valeurs cibles réalistes
+        self.target_temp = random.uniform(20, 25)
+        self.target_humidity = random.uniform(40, 55)
+        self.target_pressure = random.uniform(1010, 1020)
 
     def generate_reading(self):
-        base_values = {
-            'temperature': (15, 30),
-            'humidity': (30, 70),
-            'pressure': (980, 1020)
-        }
-        min_val, max_val = base_values[self.sensor_type]
-        value = random.uniform(min_val, max_val)
-
-        # Simulation d'anomalies (5% chance)
-        if random.random() < 0.05:
-            value = random.uniform(max_val, max_val * 1.5)
+        now = time.time()
+        if self.sensor_type == "temperature":
+            base_value = self.target_temp + 1 * math.sin((now / 60) * 2 * math.pi + self.phase)
+            anomaly_chance = random.random()
+            if anomaly_chance < 0.05:
+                value = random.uniform(30.1, 35)  # critique
+            elif anomaly_chance < 0.15:
+                value = random.uniform(28, 30)  # fréquent
+            else:
+                value = base_value + random.uniform(-0.2, 0.2)
+        elif self.sensor_type == "humidity":
+            base_value = self.target_humidity + 2 * math.sin((now / 90) * 2 * math.pi + self.phase)
+            anomaly_chance = random.random()
+            if anomaly_chance < 0.05:
+                value = random.uniform(25, 35)  # trop bas
+            elif anomaly_chance < 0.15:
+                value = random.uniform(60, 70)  # trop haut
+            else:
+                value = base_value + random.uniform(-1, 1)
+        elif self.sensor_type == "pressure":
+            base_value = self.target_pressure + 1.5 * math.sin((now / 120) * 2 * math.pi + self.phase)
+            anomaly_chance = random.random()
+            if anomaly_chance < 0.05:
+                value = random.uniform(980, 995)  # très bas
+            elif anomaly_chance < 0.15:
+                value = random.uniform(1030, 1040)  # très haut
+            else:
+                value = base_value + random.uniform(-0.5, 0.5)
 
         return {
             "sensor_id": self.sensor_id,
@@ -55,7 +78,7 @@ class IoTSensor:
 
 # === Création du producer Kafka ===
 producer = KafkaProducer(
-    bootstrap_servers=['localhost:9092'],  # 'kafka:9092' si dans un conteneur Docker
+    bootstrap_servers=['localhost:9092'],
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
@@ -76,4 +99,4 @@ while True:
         reading = sensor.generate_reading()
         producer.send("iot-sensor-data", reading)
         print(f"Sent: {reading}")
-    time.sleep(5)  
+    time.sleep(60)
