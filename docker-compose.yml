@@ -5,7 +5,7 @@ services:
     hostname: broker
     container_name: broker
     ports:
-      - 9092:9092
+      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
@@ -24,9 +24,8 @@ services:
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     volumes:
       - kafka-data:/var/lib/kafka/data
-     
 
-  # PostgreSQL
+  # PostgreSQL IOT
   postgres:
     image: postgres:16-alpine
     ports:
@@ -41,9 +40,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
 
-  
-
-  # Airflow (PostgreSQL pour métadonnées)
+  # Airflow Postgres
   airflow-postgres:
     image: postgres:16-alpine
     environment:
@@ -55,8 +52,12 @@ services:
     volumes:
       - airflow-postgres-data:/var/lib/postgresql/data
 
+  # Airflow webserver / scheduler
   airflow-container:
     image: mon_image_airflow:latest
+    build:
+      context: .
+      dockerfile: orchestration/Dockerfile
     container_name: airflow_container
     ports:
       - "8000:8080"
@@ -66,11 +67,18 @@ services:
       - .env
     depends_on:
       - airflow-postgres
+      - broker
+      - postgres
+    volumes:
+      - ./:/opt/iot-sensor-data-pipeline
+      - ./orchestration/dags:/opt/airflow/dags
     command: >
       bash -c "airflow db migrate &&
-               exec airflow standalone"
+              exec airflow standalone"
 
-  
+
+
+
 volumes:
   kafka-data:
   postgres-data:
