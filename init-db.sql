@@ -45,3 +45,5 @@ CREATE TABLE aggregated_stats (
 -- PostgreSQL-compatible index creations
 CREATE INDEX idx_sensor_timestamp ON sensor_readings (sensor_id, timestamp);
 CREATE INDEX idx_sensor_type ON sensor_readings (sensor_type);
+
+CREATE DATABASE superset_db;
