@@ -30,9 +30,9 @@ class IoTSensor:
         if self.sensor_type == "temperature":
             base_value = self.target_temp + 1 * math.sin((now / 60) * 2 * math.pi + self.phase)
             anomaly_chance = random.random()
-            if anomaly_chance < 0.05:
+            if anomaly_chance < 0.02:
                 value = random.uniform(30.1, 35)  # critique
-            elif anomaly_chance < 0.15:
+            elif anomaly_chance < 0.7:
                 value = random.uniform(28, 30)  # fréquent
             else:
                 value = base_value + random.uniform(-0.2, 0.2)

@@ -1,9 +1,7 @@
 import os
-import json
 from dotenv import load_dotenv
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
-from pyspark.sql.types import StructType, StructField, StringType, FloatType, IntegerType, TimestampType
+from pyspark.sql.types import StructType, StructField, StringType, FloatType, IntegerType
 
 load_dotenv()
 
@@ -37,38 +35,7 @@ schema = StructType([
     ]))
 ])
 
-spark = SparkSession.builder \
-    .appName("KafkaToPostgres") \
-    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.postgresql:postgresql:42.7.1") \
-    .config("spark.jars.repositories", "https://repo1.maven.org/maven2") \
-    .getOrCreate()
 
-# Lecture continue depuis Kafka
-df = spark.readStream \
-    .format("kafka") \
-    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVER) \
-    .option("subscribe", KAFKA_TOPIC) \
-    .option("startingOffsets", "earliest") \
-    .load()
-
-# Les données Kafka sont en bytes dans 'value'
-df_json = df.selectExpr("CAST(value AS STRING) as json_str") \
-    .select(from_json(col("json_str"), schema).alias("data")) \
-    .select(
-        col("data.sensor_id"),
-        col("data.sensor_type"),
-        col("data.value"),
-        col("data.unit"),
-        col("data.timestamp"),
-        col("data.location.building"),
-        col("data.location.floor"),
-        col("data.location.room"),
-        col("data.metadata.battery_level"),
-        col("data.metadata.signal_strength")
-    ) \
-    .withColumn("timestamp", col("timestamp").cast("timestamp"))
-
-# Fonction pour écrire dans PostgreSQL
 def write_to_postgres(batch_df, batch_id):
     try:
         if batch_df.count() == 0:
@@ -90,10 +57,49 @@ def write_to_postgres(batch_df, batch_id):
         print(f"[Batch {batch_id}] Error writing to PostgreSQL: {e}")
         raise
 
-# Stream continu
-query = df_json.writeStream \
-    .foreachBatch(write_to_postgres) \
-    .outputMode("update") \
-    .start()
 
-query.awaitTermination()
+def start_data_persistance(spark):
+    """Start the Kafka -> Postgres persistence stream using provided SparkSession.
+
+    Returns the started StreamingQuery.
+    """
+    print(f"Starting data persistence (Postgres: {POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB})")
+
+    df = spark.readStream \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVER) \
+        .option("subscribe", KAFKA_TOPIC) \
+        .option("startingOffsets", "earliest") \
+        .load()
+
+    df_json = df.selectExpr("CAST(value AS STRING) as json_str") \
+        .select(from_json(col("json_str"), schema).alias("data")) \
+        .select(
+            col("data.sensor_id"),
+            col("data.sensor_type"),
+            col("data.value"),
+            col("data.unit"),
+            col("data.timestamp"),
+            col("data.location.building"),
+            col("data.location.floor"),
+            col("data.location.room"),
+            col("data.metadata.battery_level"),
+            col("data.metadata.signal_strength")
+        ) \
+        .withColumn("timestamp", col("timestamp").cast("timestamp"))
+
+    query = df_json.writeStream \
+        .foreachBatch(write_to_postgres) \
+        .outputMode("update") \
+        .start()
+
+    print("Data persistence stream started")
+    return query
+
+
+if __name__ == "__main__":
+    from spark_processing.utils import build_spark_session
+    
+    spark = build_spark_session("KafkaToPostgres")
+    q = start_data_persistance(spark)
+    q.awaitTermination()
