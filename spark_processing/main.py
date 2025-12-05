@@ -21,7 +21,7 @@ def main():
     # Import module start functions
     from spark_processing.alert_detector import start_alert_detector
     from spark_processing.data_persistance import start_data_persistance
-    from spark_processing.data_agregator import start_data_agregator
+    from spark_processing.data_agregator import start_aggreg
 
     queries = []
     try:
@@ -33,7 +33,7 @@ def main():
         if q2 is not None:
             queries.append(q2)
 
-        q3 = start_data_agregator(spark)
+        q3 = start_aggreg(spark)
         if q3 is not None:
             queries.append(q3)
 

@@ -99,14 +99,61 @@ def ecrire_aggreta_db(df, epoch_id):
         .mode("append") \
         .save()
 
-query = (
-    agg_df.writeStream
-    .format("console")
-    .trigger(processingTime="5 minutes")
-    .outputMode("append")
-    .option("truncate", "false")
-    .foreachBatch(ecrire_aggreta_db)
-    .start()
-)
 
-query.awaitTermination()
+
+#query.awaitTermination()
+
+
+
+def start_aggreg(spark):
+    print(f"Starting Data agregator (Postgres: {POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB})")
+
+    df = (
+        spark.readStream
+        .format("kafka")
+        .option("kafka.bootstrap.servers", "localhost:9092")
+        .option("subscribe", "iot-sensor-data")
+        .option("startingOffsets", "earliest")
+        .load()
+    )
+
+    parsed = (
+        df.select(from_json(col("value").cast("string"), schema).alias("d"))
+        .select("d.*")
+    )
+
+    agg_df = parsed.withWatermark("timestamp", "2 minutes") \
+        .groupBy(
+        window(col("timestamp"), "5 minutes"),
+        col("sensor_id"),
+        col("sensor_type")
+    ) \
+        .agg(
+        avg("value").alias("avg_value"),
+        min("value").alias("min_value"),
+        max("value").alias("max_value"),
+        count("*").alias("record_count")
+    ) \
+        .select(
+        col("sensor_id"),
+        col("sensor_type"),
+        col("window.start").alias("window_start"),
+        col("window.end").alias("window_end"),
+        col("avg_value"),
+        col("min_value"),
+        col("max_value"),
+        col("record_count").alias("count")
+    )
+
+
+    query = (
+        agg_df.writeStream
+        .format("console")
+        .trigger(processingTime="5 minutes")
+        .outputMode("append")
+        .option("truncate", "false")
+        .foreachBatch(ecrire_aggreta_db)
+        .start()
+    )
+    print("Data agregator stream started")
+    return query
