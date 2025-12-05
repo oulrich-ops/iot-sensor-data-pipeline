@@ -1,3 +1,11 @@
+x-superset-user: &superset-user root
+x-superset-volumes: &superset-volumes
+  # /app/pythonpath_docker will be appended to the PYTHONPATH in the final container
+  - ./docker:/app/docker
+  #- ./superset:/app/superset
+  - ./docker/superset_config.py:/app/pythonpath/superset_config.py
+
+
 services:
   # Kafka
   broker:
@@ -24,8 +32,9 @@ services:
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     volumes:
       - kafka-data:/var/lib/kafka/data
+     
 
-  # PostgreSQL IOT
+  # PostgreSQL
   postgres:
     image: postgres:16-alpine
     ports:
@@ -39,6 +48,8 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - mynet
 
   # Airflow Postgres
   airflow-postgres:
@@ -76,10 +87,14 @@ services:
       bash -c "airflow db migrate &&
               exec airflow standalone"
 
-
-
-
+  
 volumes:
   kafka-data:
   postgres-data:
   airflow-postgres-data:
+  grafana-data:
+  redis:
+
+networks:
+  mynet:
+    driver: bridge
