@@ -13,10 +13,10 @@ def clean_env_value(value, default=""):
     cleaned = re.sub(r'[^\x20-\x7E]', '', value)  # Garder seulement ASCII imprimable
     return cleaned.strip()
 
-POSTGRES_HOST = os.getenv("POSTGRES_DB_HOST", "localhost")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-POSTGRES_DB = os.getenv("POSTGRES_DB", "iot_sensors")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "airflow")
+POSTGRES_HOST = os.getenv("POSTGRES_DB_HOST")
+POSTGRES_PORT = os.getenv("POSTGRES_PORT")
+POSTGRES_DB = os.getenv("POSTGRES_DB")
+POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
 spark = (
