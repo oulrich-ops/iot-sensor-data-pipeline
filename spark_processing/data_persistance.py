@@ -69,7 +69,7 @@ def start_data_persistance(spark):
         .format("kafka") \
         .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVER) \
         .option("subscribe", KAFKA_TOPIC) \
-        .option("startingOffsets", "earliest") \
+        .option("startingOffsets", "latest") \
         .load()
 
     df_json = df.selectExpr("CAST(value AS STRING) as json_str") \
