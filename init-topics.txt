@@ -36,3 +36,7 @@
   --bootstrap-server broker:29092 \
   --delete --topic "iot-alert"
 
+  /opt/kafka/bin/kafka-topics.sh \
+  --bootstrap-server broker:29092 \
+  --delete --topic "iot-sensor-data"
+

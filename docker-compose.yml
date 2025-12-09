@@ -32,6 +32,8 @@ services:
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     volumes:
       - kafka-data:/var/lib/kafka/data
+    networks:
+      - mynet
      
 
   # PostgreSQL
@@ -64,28 +66,17 @@ services:
       - airflow-postgres-data:/var/lib/postgresql/data
 
   # Airflow webserver / scheduler
-  airflow-container:
-    image: mon_image_airflow:latest
-    build:
-      context: .
-      dockerfile: orchestration/Dockerfile
-    container_name: airflow_container
+
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: kafka-ui
     ports:
-      - "8000:8080"
+      - "8080:8080"
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
-    env_file:
-      - .env
-    depends_on:
-      - airflow-postgres
-      - broker
-      - postgres
-    volumes:
-      - ./:/opt/iot-sensor-data-pipeline
-      - ./orchestration/dags:/opt/airflow/dags
-    command: >
-      bash -c "airflow db migrate &&
-              exec airflow standalone"
+      DYNAMIC_CONFIG_ENABLED: "true"
+    networks:
+      - mynet
 
   
 volumes:
