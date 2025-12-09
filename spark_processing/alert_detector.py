@@ -74,6 +74,7 @@ def start_alert_detector(spark):
         .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVER)
         .option("subscribe", "iot-sensor-data")
         .option("startingOffsets", "latest")
+        .option("failOnDataLoss", "false")
         .load()
     )
 
