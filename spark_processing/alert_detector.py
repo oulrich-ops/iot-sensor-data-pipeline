@@ -1,38 +1,23 @@
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json, when, lit, current_timestamp, to_json, struct
 from pyspark.sql.types import (
     StructType, StructField, StringType, IntegerType, DoubleType
 )
+
 import os
 from dotenv import load_dotenv
 
-
 load_dotenv()
 
-# Kafka
-KAFKA_BOOTSTRAP_SERVER = os.getenv("KAFKA_BOOTSTRAP_SERVER", "localhost:9092")
-KAFKA_TOPIC_IOT_SENSOR = os.getenv("KAFKA_TOPIC_IOT_SENSOR", "iot-sensor-data")
+KAFKA_BOOTSTRAP_SERVER = os.getenv("KAFKA_BOOTSTRAP_SERVER")
 
-# Postgres (stack IOT)
-POSTGRES_HOST = os.getenv("POSTGRES_DB_HOST", "localhost")
-POSTGRES_DB = os.getenv("POSTGRES_DB", "iot_sensors")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "airflow")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "H3althyAirflow!")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")  # optionnel si tu veux le sortir aussi
+POSTGRES_HOST = os.getenv("POSTGRES_DB_HOST")
+POSTGRES_PORT = os.getenv("POSTGRES_PORT")
+POSTGRES_DB = os.getenv("POSTGRES_DB")
+POSTGRES_USER = os.getenv("POSTGRES_USER")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
-print(f"PostgreSQL Config: {POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}")
 
-spark = (
-    SparkSession.builder
-    .appName("AlertDetector")
-    .config(
-        "spark.jars.packages",
-        "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.postgresql:postgresql:42.7.1"
-    )
-    .config("spark.jars.repositories", "https://repo1.maven.org/maven2")
-    .getOrCreate()
-)
-
+# Schéma sensor
 sensor_schema = StructType([
     StructField("sensor_id", StringType(), True),
     StructField("sensor_type", StringType(), True),
@@ -50,90 +35,6 @@ sensor_schema = StructType([
     ]), True),
 ])
 
-# Lecture Kafka en utilisant la variable d'env du topic
-df = (
-    spark.readStream
-    .format("kafka")
-    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVER)
-    .option("subscribe", KAFKA_TOPIC_IOT_SENSOR)
-    .option("startingOffsets", "earliest")
-    .load()
-)
-
-df_parsed = (
-    df.selectExpr("CAST(value AS STRING) AS json_str")
-      .select(from_json(col("json_str"), sensor_schema).alias("data"))
-      .select(
-          col("data.sensor_id").alias("sensor_id"),
-          col("data.sensor_type").alias("sensor_type"),
-          col("data.location.building").alias("building"),
-          col("data.location.floor").alias("floor"),
-          col("data.location.room").alias("room"),
-          col("data.timestamp").alias("timestamp"),
-          col("data.value").alias("value"),
-          col("data.unit").alias("unit"),
-          col("data.metadata.battery_level").alias("battery_level"),
-          col("data.metadata.signal_strength").alias("signal_strength"),
-      )
-)
-
-df_alerts = (
-    df_parsed
-    .withColumn(
-        "alert_type",
-        when(
-            (col("sensor_type") == "temperature") & (col("unit") == "celsius") &
-            ((col("value") < 0) | (col("value") > 35)),
-            lit("temperature_out_of_range")
-        ).when(
-            (col("sensor_type") == "humidity") & (col("unit") == "percent") &
-            ((col("value") < 20) | (col("value") > 70)),
-            lit("humidity_out_of_range")
-        ).when(
-            (col("sensor_type") == "pressure") & (col("unit") == "hPa") &
-            ((col("value") < 950) | (col("value") > 1050)),
-            lit("pressure_out_of_range")
-        ).when(
-            col("battery_level") < 30,
-            lit("low_battery")
-        ).when(
-            col("signal_strength") < -75,
-            lit("weak_signal")
-        ).otherwise(lit(None))
-    )
-    .where(col("alert_type").isNotNull())
-    .select(
-        col("sensor_id"),
-        col("alert_type"),
-        when(col("alert_type").isin("temperature_out_of_range", "pressure_out_of_range"),
-             lit("critical")
-        ).when(col("alert_type").isin("humidity_out_of_range", "low_battery"),
-               lit("warning")
-        ).otherwise(lit("info")).alias("severity"),
-        when(col("alert_type") == "temperature_out_of_range", lit(35.0))
-        .when(col("alert_type") == "humidity_out_of_range", lit(70.0))
-        .when(col("alert_type") == "pressure_out_of_range", lit(1050.0))
-        .when(col("alert_type") == "low_battery", lit(30.0))
-        .when(col("alert_type") == "weak_signal", lit(-75.0))
-        .otherwise(lit(None).cast("double")).alias("threshold_value"),
-        col("value").alias("actual_value"),
-        when(col("alert_type") == "temperature_out_of_range",
-             lit("Température hors limites (0-35°C)"))
-        .when(col("alert_type") == "humidity_out_of_range",
-             lit("Humidité hors limites (20-70%)"))
-        .when(col("alert_type") == "pressure_out_of_range",
-             lit("Pression hors limites (950-1050 hPa)"))
-        .when(col("alert_type") == "low_battery",
-             lit("Batterie faible (<30%)"))
-        .when(col("alert_type") == "weak_signal",
-             lit("Signal trop faible (<-75 dBm)"))
-        .otherwise(lit("Anomalie détectée")).alias("message"),
-        col("timestamp").cast("timestamp").alias("triggered_at"),
-        lit(None).cast("timestamp").alias("resolved_at"),
-        lit("active").alias("status"),
-        current_timestamp().alias("created_at")
-    )
-)
 
 def write_alerts_to_postgres(batch_df, batch_id):
     try:
@@ -160,7 +61,143 @@ def write_alerts_to_postgres(batch_df, batch_id):
         raise
 
 
-df_alerts_kafka = (
+def start_alert_detector(spark):
+    """Create the alert detection stream using the provided SparkSession.
+
+    Returns the started StreamingQuery.
+    """
+    print(f"Starting alert detector (Postgres: {POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB})")
+
+    df = (
+        spark.readStream
+        .format("kafka")
+        .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVER)
+        .option("subscribe", "iot-sensor-data")
+        .option("startingOffsets", "latest")
+        .load()
+    )
+
+    df_parsed = (
+        df.selectExpr("CAST(value AS STRING) AS json_str")
+          .select(from_json(col("json_str"), sensor_schema).alias("data"))
+          .select(
+              col("data.sensor_id").alias("sensor_id"),
+              col("data.sensor_type").alias("sensor_type"),
+              col("data.location.building").alias("building"),
+              col("data.location.floor").alias("floor"),
+              col("data.location.room").alias("room"),
+              col("data.timestamp").alias("timestamp"),
+              col("data.value").alias("value"),
+              col("data.unit").alias("unit"),
+              col("data.metadata.battery_level").alias("battery_level"),
+              col("data.metadata.signal_strength").alias("signal_strength"),
+          )
+    )
+
+    df_alerts = (
+    df_parsed
+    .withColumn(
+        "alert_type",
+
+        # --- TEMPÉRATURE SALLE SERVEUR ---
+        when(
+            (col("sensor_type") == "temperature") &
+            (col("unit") == "celsius") &
+            ((col("value") < 15) | (col("value") > 30)),
+            lit("temperature_critical")
+        )
+        .when(
+            (col("sensor_type") == "temperature") &
+            (col("unit") == "celsius") &
+            (col("value") > 27),
+            lit("temperature_warning")
+        )
+
+        # --- HUMIDITÉ ---
+        .when(
+            (col("sensor_type") == "humidity") &
+            (col("unit") == "percent") &
+            ((col("value") < 30) | (col("value") > 70)),
+            lit("humidity_critical")
+        )
+        .when(
+            (col("sensor_type") == "humidity") &
+            (col("unit") == "percent") &
+            ((col("value") < 35) | (col("value") > 60)),
+            lit("humidity_warning")
+        )
+
+        # --- PRESSION ATMOSPHÉRIQUE ---
+        .when(
+            (col("sensor_type") == "pressure") &
+            (col("unit") == "hPa") &
+            ((col("value") < 980) | (col("value") > 1040)),
+            lit("pressure_critical")
+        )
+        .when(
+            (col("sensor_type") == "pressure") &
+            (col("unit") == "hPa") &
+            ((col("value") < 995) | (col("value") > 1030)),
+            lit("pressure_warning")
+        )
+
+        # --- BATTERIE (réactivation car utile en salle serveur) ---
+        .when(col("battery_level") < 20, lit("battery_critical"))
+        .when(col("battery_level") < 40, lit("battery_warning"))
+
+        # --- SIGNAL (capteurs IoT WiFi) ---
+        .when(col("signal_strength") < -75, lit("weak_signal_critical"))
+        .when(col("signal_strength") < -70, lit("weak_signal_warning"))
+
+        .otherwise(None)
+    )
+    .where(col("alert_type").isNotNull())
+    .select(
+        col("sensor_id"),
+        col("alert_type"),
+
+        # Severity automatique
+        when(col("alert_type").like("%critical%"), "critical")
+        .when(col("alert_type").like("%warning%"), "warning")
+        .otherwise("info")
+        .alias("severity"),
+
+        # Threshold per alert
+        when(col("alert_type") == "temperature_critical", lit(30))
+        .when(col("alert_type") == "temperature_warning", lit(27))
+        .when(col("alert_type") == "humidity_critical", lit(70))
+        .when(col("alert_type") == "humidity_warning", lit(60))
+        .when(col("alert_type") == "pressure_critical", lit(1040))
+        .when(col("alert_type") == "pressure_warning", lit(1030))
+        .when(col("alert_type") == "battery_critical", lit(20))
+        .when(col("alert_type") == "battery_warning", lit(40))
+        .when(col("alert_type") == "weak_signal_critical", lit(-75))
+        .when(col("alert_type") == "weak_signal_warning", lit(-70))
+        .otherwise(None)
+        .alias("threshold_value"),
+
+        col("value").alias("actual_value"),
+
+        # Messages précis pour datacenter
+        when(col("alert_type") == "temperature_critical", lit("Température CRITIQUE (>30°C ou <15°C)"))
+        .when(col("alert_type") == "temperature_warning", lit("Température élevée (>27°C)"))
+        .when(col("alert_type") == "humidity_critical", lit("Humidité CRITIQUE (<30% ou >70%)"))
+        .when(col("alert_type") == "humidity_warning", lit("Humidité anormale (<35% ou >60%)"))
+        .when(col("alert_type") == "pressure_critical", lit("Pression atmosphérique anormale (<980 ou >1040 hPa)"))
+        .when(col("alert_type") == "pressure_warning", lit("Pression hors plage (<995 ou >1030 hPa)"))
+        .when(col("alert_type") == "battery_critical", lit("Batterie CRITIQUE (<20%)"))
+        .when(col("alert_type") == "battery_warning", lit("Batterie faible (<40%)"))
+        .when(col("alert_type").like("weak_signal_%"), lit("Signal WiFi IoT faible"))
+        .otherwise("Anomalie détectée")
+        .alias("message"),
+
+        col("timestamp").cast("timestamp").alias("triggered_at"),
+        lit(None).cast("timestamp").alias("resolved_at"),
+        lit("active").alias("status"),
+        current_timestamp().alias("created_at")
+    )
+)
+    df_alerts_kafka = (
     df_alerts
     .select(
         col("sensor_id").cast("string").alias("key"),
@@ -178,23 +215,16 @@ df_alerts_kafka = (
         ).alias("value")
     )
 )
+  
+    print("Detected alerts schema:")
+    query_kafka = ( df_alerts_kafka.writeStream .format("kafka") .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVER) .option("topic", "iot-alert") .option("checkpointLocation", "/tmp/checkpoints/iot_alerts_kafka") .outputMode("append") .start() )
 
-query_postgres = (
-    df_alerts.writeStream
-    .foreachBatch(write_alerts_to_postgres)
-    .outputMode("append")
-    .start()
-)
-query_kafka = (
-    df_alerts_kafka.writeStream
-    .format("kafka")
-    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVER)
-    .option("topic", "iot-alert")
-    .option("checkpointLocation", "/tmp/checkpoints/iot_alerts_kafka")
-    .outputMode("append")
-    .start()
-)
+    query = (
+        df_alerts.writeStream
+        .foreachBatch(write_alerts_to_postgres)
+        .outputMode("append")
+        .start()
+    )
 
-
-query_postgres.awaitTermination()
-query_kafka.awaitTermination()
+    print("Alert detector stream started")
+    return query,query_kafka

@@ -13,15 +13,15 @@ else:
 
 def main():
     # Import here so modules can be used standalone too
-    from utils import build_spark_session
+    from spark_processing.utils import build_spark_session
 
     # Build one SparkSession with required packages
     spark = build_spark_session("spark_processing_orchestrator")
 
     # Import module start functions
-    from alert_detector import start_alert_detector
-    from data_persistance import start_data_persistance
-    from data_agregator import start_aggreg
+    from spark_processing.alert_detector import start_alert_detector
+    from spark_processing.data_persistance import start_data_persistance
+    from spark_processing.data_agregator import start_aggreg
 
     queries = []
     try:
@@ -29,9 +29,11 @@ def main():
         if q1 is not None:
             queries.append(q1)
 
-        q2 = start_alert_detector(spark)
+        q2,q2b = start_alert_detector(spark)
         if q2 is not None:
             queries.append(q2)
+        if q2b is not None:
+            queries.append(q2b)
 
         q3 = start_aggreg(spark)
         if q3 is not None:

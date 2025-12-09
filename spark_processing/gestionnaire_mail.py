@@ -18,7 +18,17 @@ ALERT_RECIPIENT = os.getenv("ALERT_RECIPIENT")
 
 
 last_sensor_state = {}  
-def send_email_alert(alert, sensor_state):
+
+def init_smtp_connection():
+    server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+    server.starttls()
+    server.login(SMTP_USER, SMTP_PASS)
+    return server
+
+server = init_smtp_connection()
+
+
+def send_email_alert(alert, sensor_state, server):
     sensor_id = alert.get("sensor_id")
     alert_type = alert.get("alert_type")
     severity = alert.get("severity")
@@ -47,33 +57,30 @@ def send_email_alert(alert, sensor_state):
     msg["From"] = SMTP_USER
     msg["To"] = ALERT_RECIPIENT
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-        server.starttls()
-        server.login(SMTP_USER, SMTP_PASS)
-        server.send_message(msg)
-
+    server.send_message(msg)
     print(f"[MAIL] Alerte envoyée pour {sensor_id} ({severity})")
 
-def process_iot_sensor_data(record_value):
-    """Met à jour last_sensor_state à partir du topic iot-sensor-data."""
-    sensor_id = record_value.get("sensor_id")
-    location = record_value.get("location", {}) or {}
-    metadata = record_value.get("metadata", {}) or {}
 
-    if not sensor_id:
-        return
+# def process_iot_sensor_data(record_value):
+#     """Met à jour last_sensor_state à partir du topic iot-sensor-data."""
+#     sensor_id = record_value.get("sensor_id")
+#     location = record_value.get("location", {}) or {}
+#     metadata = record_value.get("metadata", {}) or {}
 
-    last_sensor_state[sensor_id] = {
-        "building": location.get("building"),
-        "floor": location.get("floor"),
-        "room": location.get("room"),
-        "battery_level": metadata.get("battery_level"),
-        "signal_strength": metadata.get("signal_strength"),
-        "timestamp": record_value.get("timestamp"),
-        "value": record_value.get("value"),
-        "unit": record_value.get("unit"),
-        "sensor_type": record_value.get("sensor_type"),
-    }
+#     if not sensor_id:
+#         return
+
+#     last_sensor_state[sensor_id] = {
+#         "building": location.get("building"),
+#         "floor": location.get("floor"),
+#         "room": location.get("room"),
+#         "battery_level": metadata.get("battery_level"),
+#         "signal_strength": metadata.get("signal_strength"),
+#         "timestamp": record_value.get("timestamp"),
+#         "value": record_value.get("value"),
+#         "unit": record_value.get("unit"),
+#         "sensor_type": record_value.get("sensor_type"),
+#     }
 
 def process_iot_alert(record_value):
     """Traite une alerte venant de iot-alert et envoie un mail si besoin."""
@@ -83,11 +90,10 @@ def process_iot_alert(record_value):
 
     sensor_id = record_value.get("sensor_id")
     sensor_state = last_sensor_state.get(sensor_id)
-    send_email_alert(record_value, sensor_state)
+    send_email_alert(record_value, sensor_state, server)
 
 def main():
     consumer = KafkaConsumer(
-        "iot-sensor-data",
         "iot-alert",
         bootstrap_servers=[KAFKA_BOOTSTRAP_SERVER],
         value_deserializer=lambda v: json.loads(v.decode("utf-8")),
@@ -95,17 +101,17 @@ def main():
         enable_auto_commit=True,
         group_id="alert-mail-consumer",
     )
-
     print("Alert mail consumer started (listening to iot-sensor-data & iot-alert)")
 
     for msg in consumer:
-        topic = msg.topic
+        #topic = msg.topic
         value = msg.value
 
-        if topic == "iot-sensor-data":
-            process_iot_sensor_data(value)
-        elif topic == "iot-alert":
-            process_iot_alert(value)
+        # if topic == "iot-sensor-data":
+        #     process_iot_sensor_data(value)
+        # elif topic == "iot-alert":
+            
+        process_iot_alert(value)
 
 if __name__ == "__main__":
     main()
