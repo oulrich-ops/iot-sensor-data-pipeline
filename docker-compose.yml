@@ -53,19 +53,6 @@ services:
     networks:
       - mynet
 
-  
-
-  # Airflow (PostgreSQL pour métadonnées)
-  airflow-postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB_rf}
-      POSTGRES_USER: ${POSTGRES_USER_rf}
-      POSTGRES_PASSWORD: ${POSTGRES_PWD_rf}
-    env_file:
-      - .env
-    volumes:
-      - airflow-postgres-data:/var/lib/postgresql/data
 
   superset:
     env_file:
@@ -137,7 +124,6 @@ services:
 volumes:
   kafka-data:
   postgres-data:
-  airflow-postgres-data:
   grafana-data:
   redis:
 
