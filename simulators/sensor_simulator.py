@@ -32,7 +32,7 @@ class IoTSensor:
             anomaly_chance = random.random()
             if anomaly_chance < 0.01:
                 value = random.uniform(30.1, 35)  # critique
-            elif anomaly_chance < 0.05:
+            elif anomaly_chance < 0.03:
                 value = random.uniform(28, 30)  # fréquent
             else:
                 value = base_value + random.uniform(-0.2, 0.2)
@@ -41,7 +41,7 @@ class IoTSensor:
             anomaly_chance = random.random()
             if anomaly_chance < 0.01:
                 value = random.uniform(25, 35)  # trop bas
-            elif anomaly_chance < 0.05:
+            elif anomaly_chance < 0.03:
                 value = random.uniform(60, 70)  # trop haut
             else:
                 value = base_value + random.uniform(-1, 1)
@@ -50,10 +50,19 @@ class IoTSensor:
             anomaly_chance = random.random()
             if anomaly_chance < 0.01:
                 value = random.uniform(980, 995)  # très bas
-            elif anomaly_chance < 0.05:
+            elif anomaly_chance < 0.03:
                 value = random.uniform(1030, 1040)  # très haut
             else:
                 value = base_value + random.uniform(-0.5, 0.5)
+                
+            p = random.random()
+
+            if p < 0.01:
+                signal_strength = random.randint(-90, -80)  
+            elif p < 0.03:
+                signal_strength = random.randint(-80, -75)  
+            else:
+                signal_strength = random.randint(-74, -40) 
 
         return {
             "sensor_id": self.sensor_id,
@@ -68,7 +77,7 @@ class IoTSensor:
             "unit": self.get_unit(),
             "metadata": {
                 "battery_level": random.randint(50, 100),
-                "signal_strength": random.randint(-80, -30)
+                "signal_strength": signal_strength
             }
         }
 
@@ -99,5 +108,6 @@ while True:
         reading = sensor.generate_reading()
         producer.send("iot-sensor-data", reading)
         print(f"Sent: {reading}")
-        time.sleep(0.5)
+        
+        time.sleep(random.uniform(3, 6))  
     time.sleep(120)
