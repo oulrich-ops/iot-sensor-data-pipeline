@@ -27,6 +27,15 @@ class IoTSensor:
 
     def generate_reading(self):
         now = time.time()
+        # signal strength variation independent of sensor type
+        p = random.random()
+        if p < 0.01:
+            signal_strength = random.randint(-90, -80)
+        elif p < 0.03:
+            signal_strength = random.randint(-80, -75)
+        else:
+            signal_strength = random.randint(-74, -40)
+
         if self.sensor_type == "temperature":
             base_value = self.target_temp + 1 * math.sin((now / 60) * 2 * math.pi + self.phase)
             anomaly_chance = random.random()
@@ -55,14 +64,6 @@ class IoTSensor:
             else:
                 value = base_value + random.uniform(-0.5, 0.5)
                 
-            p = random.random()
-
-            if p < 0.01:
-                signal_strength = random.randint(-90, -80)  
-            elif p < 0.03:
-                signal_strength = random.randint(-80, -75)  
-            else:
-                signal_strength = random.randint(-74, -40) 
 
         return {
             "sensor_id": self.sensor_id,
