@@ -99,5 +99,6 @@ while True:
         reading = sensor.generate_reading()
         producer.send("iot-sensor-data", reading)
         print(f"Sent: {reading}")
-        time.sleep(3)
+        
+        time.sleep(random.uniform(3, 6))  
     time.sleep(120)
