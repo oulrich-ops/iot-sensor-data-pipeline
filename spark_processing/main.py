@@ -22,6 +22,7 @@ def main():
     from spark_processing.alert_detector import start_alert_detector
     from spark_processing.data_persistance import start_data_persistance
     from spark_processing.data_agregator import start_aggreg
+    from spark_processing.gestionnaire_mail import main as mail_main
 
     queries = []
     try:
@@ -38,6 +39,11 @@ def main():
         q3 = start_aggreg(spark)
         if q3 is not None:
             queries.append(q3)
+            
+        q4 = mail_main()
+        if q4 is not None:
+            queries.append(q4)
+
 
         print(f"Started {len(queries)} streaming queries. Waiting for termination (Ctrl+C to stop).")
 
