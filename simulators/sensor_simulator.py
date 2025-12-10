@@ -32,7 +32,7 @@ class IoTSensor:
             anomaly_chance = random.random()
             if anomaly_chance < 0.01:
                 value = random.uniform(30.1, 35)  # critique
-            elif anomaly_chance < 0.05:
+            elif anomaly_chance < 0.03:
                 value = random.uniform(28, 30)  # fréquent
             else:
                 value = base_value + random.uniform(-0.2, 0.2)
@@ -41,7 +41,7 @@ class IoTSensor:
             anomaly_chance = random.random()
             if anomaly_chance < 0.01:
                 value = random.uniform(25, 35)  # trop bas
-            elif anomaly_chance < 0.05:
+            elif anomaly_chance < 0.03:
                 value = random.uniform(60, 70)  # trop haut
             else:
                 value = base_value + random.uniform(-1, 1)
@@ -50,7 +50,7 @@ class IoTSensor:
             anomaly_chance = random.random()
             if anomaly_chance < 0.01:
                 value = random.uniform(980, 995)  # très bas
-            elif anomaly_chance < 0.05:
+            elif anomaly_chance < 0.03:
                 value = random.uniform(1030, 1040)  # très haut
             else:
                 value = base_value + random.uniform(-0.5, 0.5)
