@@ -54,6 +54,15 @@ class IoTSensor:
                 value = random.uniform(1030, 1040)  # très haut
             else:
                 value = base_value + random.uniform(-0.5, 0.5)
+                
+            p = random.random()
+
+            if p < 0.01:
+                signal_strength = random.randint(-90, -80)  
+            elif p < 0.03:
+                signal_strength = random.randint(-80, -75)  
+            else:
+                signal_strength = random.randint(-74, -40) 
 
         return {
             "sensor_id": self.sensor_id,
@@ -68,7 +77,7 @@ class IoTSensor:
             "unit": self.get_unit(),
             "metadata": {
                 "battery_level": random.randint(50, 100),
-                "signal_strength": random.randint(-80, -30)
+                "signal_strength": signal_strength
             }
         }
 
