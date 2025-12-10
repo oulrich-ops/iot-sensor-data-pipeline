@@ -207,9 +207,9 @@ def start_aggreg(spark):
         .select("d.*")
     )
 
-    agg_df = parsed.withWatermark("timestamp", "2 minutes") \
+    agg_df = parsed.withWatermark("timestamp", "1 minute") \
         .groupBy(
-        window(col("timestamp"), "5 minutes"),
+        window(col("timestamp"), "4 minutes"),
         col("sensor_id"),
         col("sensor_type")
     ) \
@@ -234,7 +234,7 @@ def start_aggreg(spark):
     query = (
         agg_df.writeStream
         .format("console")
-        .trigger(processingTime="5 minutes")
+        .trigger(processingTime="4 minutes")
         .outputMode("append")
         .option("truncate", "false")
         .foreachBatch(ecrire_aggreta_db)
