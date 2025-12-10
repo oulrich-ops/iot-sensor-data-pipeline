@@ -90,7 +90,7 @@ def start_data_persistance(spark):
 
     query = df_json.writeStream \
         .foreachBatch(write_to_postgres) \
-        .outputMode("update") \
+        .outputMode("append") \
         .start()
 
     print("Data persistence stream started")
