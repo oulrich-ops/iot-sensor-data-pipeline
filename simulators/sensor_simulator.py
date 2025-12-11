@@ -29,9 +29,9 @@ class IoTSensor:
         now = time.time()
         # signal strength variation independent of sensor type
         p = random.random()
-        if p < 0.01:
+        if p < 0.005:
             signal_strength = random.randint(-90, -80)
-        elif p < 0.03:
+        elif p < 0.01:
             signal_strength = random.randint(-80, -75)
         else:
             signal_strength = random.randint(-74, -40)
@@ -41,7 +41,7 @@ class IoTSensor:
             anomaly_chance = random.random()
             if anomaly_chance < 0.01:
                 value = random.uniform(30.1, 35)  # critique
-            elif anomaly_chance < 0.03:
+            elif anomaly_chance < 0.015:
                 value = random.uniform(28, 30)  # fréquent
             else:
                 value = base_value + random.uniform(-0.2, 0.2)
@@ -50,7 +50,7 @@ class IoTSensor:
             anomaly_chance = random.random()
             if anomaly_chance < 0.01:
                 value = random.uniform(25, 35)  # trop bas
-            elif anomaly_chance < 0.03:
+            elif anomaly_chance < 0.015:
                 value = random.uniform(60, 70)  # trop haut
             else:
                 value = base_value + random.uniform(-1, 1)
@@ -59,7 +59,7 @@ class IoTSensor:
             anomaly_chance = random.random()
             if anomaly_chance < 0.01:
                 value = random.uniform(980, 995)  # très bas
-            elif anomaly_chance < 0.03:
+            elif anomaly_chance < 0.015:
                 value = random.uniform(1030, 1040)  # très haut
             else:
                 value = base_value + random.uniform(-0.5, 0.5)
@@ -92,7 +92,7 @@ producer = KafkaProducer(
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
-# === Création de tous les capteurs ===
+# Création de tous les capteurs 
 sensors = []
 for b in buildings:
     for f in floors:
