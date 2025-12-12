@@ -11,7 +11,7 @@ floors = range(1, 3)
 rooms = range(100, 104)
 sensor_types = ["temperature", "humidity", "pressure"]
 
-# === Classe représentant un capteur ===
+
 class IoTSensor:
     def __init__(self, sensor_id, sensor_type, building, floor, room):
         self.sensor_id = sensor_id
@@ -20,50 +20,82 @@ class IoTSensor:
         self.floor = floor
         self.room = room
         self.phase = random.uniform(0, 2 * math.pi)
-        # Valeurs cibles réalistes
+         
         self.target_temp = random.uniform(20, 25)
         self.target_humidity = random.uniform(40, 55)
         self.target_pressure = random.uniform(1010, 1020)
 
     def generate_reading(self):
         now = time.time()
-        # signal strength variation independent of sensor type
-        p = random.random()
-        if p < 0.01:
-            signal_strength = random.randint(-80, -75)
-        elif p < 0.01:
-            signal_strength = random.randint(-74, -70)
-        else:
-            signal_strength = random.randint(-69, -40)
+        
+        
+        signal_chance = random.random()
+        if signal_chance < 0.002:  # Critical 
+            signal_strength = random.randint(-90, -76)
+        elif signal_chance < 0.006:  # Warning 
+            signal_strength = random.randint(-75, -71)
+        else:  # 99.4% - Normal
+            signal_strength = random.randint(-70, -40)
 
+        
+        battery_chance = random.random()
+        if battery_chance < 0.001:  #  Critical 
+            battery_level = random.randint(5, 19)
+        elif battery_chance < 0.003:  #   Warning  
+            battery_level = random.randint(20, 39)
+        else:  # 99.7% - Normal
+            battery_level = random.randint(40, 100)
+
+        
         if self.sensor_type == "temperature":
             base_value = self.target_temp + 1 * math.sin((now / 60) * 2 * math.pi + self.phase)
             anomaly_chance = random.random()
-            if anomaly_chance < 0.01:
-                value = random.uniform(30.1, 35)  # critique
-            elif anomaly_chance < 0.01:
-                value = random.uniform(28, 30)  # fréquent
-            else:
-                value = base_value + random.uniform(-0.2, 0.2)
+            
+            if anomaly_chance < 0.001:  #  CRITICAL  
+                if random.random() < 0.7:  # 70% trop chaud, 30% trop froid
+                    value = random.uniform(30.1, 35)
+                else:
+                    value = random.uniform(10, 14.9)
+            elif anomaly_chance < 0.004:  # 0.3% - WARNING (27-30°C)
+                value = random.uniform(27.1, 29.9)
+            else:  #  Normal
+                value = base_value + random.uniform(-0.5, 0.5)
+        
+        
         elif self.sensor_type == "humidity":
             base_value = self.target_humidity + 2 * math.sin((now / 90) * 2 * math.pi + self.phase)
             anomaly_chance = random.random()
-            if anomaly_chance < 0.01:
-                value = random.uniform(25, 35)  # trop bas
-            elif anomaly_chance < 0.01:
-                value = random.uniform(60, 70)  # trop haut
-            else:
+            
+            if anomaly_chance < 0.001:  #  CRITICAL
+                if random.random() < 0.5:
+                    value = random.uniform(15, 29.9)  # Trop sec
+                else:
+                    value = random.uniform(70.1, 85)  # Trop humide
+            elif anomaly_chance < 0.004:  #   WARNING 
+                if random.random() < 0.5:
+                    value = random.uniform(30, 34.9)  # Sec
+                else:
+                    value = random.uniform(60.1, 69.9)  # Humide
+            else:  #  Normal
                 value = base_value + random.uniform(-1, 1)
+        
+         
         elif self.sensor_type == "pressure":
             base_value = self.target_pressure + 1.5 * math.sin((now / 120) * 2 * math.pi + self.phase)
             anomaly_chance = random.random()
-            if anomaly_chance < 0.01:
-                value = random.uniform(980, 995)  # très bas
-            elif anomaly_chance < 0.01:
-                value = random.uniform(1030, 1040)  # très haut
-            else:
+            
+            if anomaly_chance < 0.0015:  #   CRITICAL 
+                if random.random() < 0.5:
+                    value = random.uniform(950, 979.9)  # Très bas
+                else:
+                    value = random.uniform(1040.1, 1060)  # Très haut
+            elif anomaly_chance < 0.005:  #  WARNING  
+                if random.random() < 0.5:
+                    value = random.uniform(980, 994.9)  # Bas
+                else:
+                    value = random.uniform(1030.1, 1039.9)  # Haut
+            else:  # 99.5% - Normal
                 value = base_value + random.uniform(-0.5, 0.5)
-                
 
         return {
             "sensor_id": self.sensor_id,
@@ -77,7 +109,7 @@ class IoTSensor:
             "value": round(value, 2),
             "unit": self.get_unit(),
             "metadata": {
-                "battery_level": random.randint(50, 100),
+                "battery_level": battery_level,
                 "signal_strength": signal_strength
             }
         }
