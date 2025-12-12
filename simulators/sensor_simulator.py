@@ -29,37 +29,37 @@ class IoTSensor:
         now = time.time()
         # signal strength variation independent of sensor type
         p = random.random()
-        if p < 0.0005:
-            signal_strength = random.randint(-90, -80)
-        elif p < 0.001:
+        if p < 0.01:
             signal_strength = random.randint(-80, -75)
+        elif p < 0.01:
+            signal_strength = random.randint(-74, -70)
         else:
-            signal_strength = random.randint(-74, -40)
+            signal_strength = random.randint(-69, -40)
 
         if self.sensor_type == "temperature":
             base_value = self.target_temp + 1 * math.sin((now / 60) * 2 * math.pi + self.phase)
             anomaly_chance = random.random()
-            if anomaly_chance < 0.0005:
+            if anomaly_chance < 0.01:
                 value = random.uniform(30.1, 35)  # critique
-            elif anomaly_chance < 0.001:
+            elif anomaly_chance < 0.01:
                 value = random.uniform(28, 30)  # fréquent
             else:
                 value = base_value + random.uniform(-0.2, 0.2)
         elif self.sensor_type == "humidity":
             base_value = self.target_humidity + 2 * math.sin((now / 90) * 2 * math.pi + self.phase)
             anomaly_chance = random.random()
-            if anomaly_chance < 0.0005:
+            if anomaly_chance < 0.01:
                 value = random.uniform(25, 35)  # trop bas
-            elif anomaly_chance < 0.001:
+            elif anomaly_chance < 0.01:
                 value = random.uniform(60, 70)  # trop haut
             else:
                 value = base_value + random.uniform(-1, 1)
         elif self.sensor_type == "pressure":
             base_value = self.target_pressure + 1.5 * math.sin((now / 120) * 2 * math.pi + self.phase)
             anomaly_chance = random.random()
-            if anomaly_chance < 0.0005:
+            if anomaly_chance < 0.01:
                 value = random.uniform(980, 995)  # très bas
-            elif anomaly_chance < 0.001:
+            elif anomaly_chance < 0.01:
                 value = random.uniform(1030, 1040)  # très haut
             else:
                 value = base_value + random.uniform(-0.5, 0.5)
@@ -110,5 +110,5 @@ while True:
         producer.send("iot-sensor-data", reading)
         print(f"Sent: {reading}")
         
-        time.sleep(random.uniform(3, 6))  
-    time.sleep(120)
+        #time.sleep(random.uniform(3, 6))  
+    time.sleep(3)
