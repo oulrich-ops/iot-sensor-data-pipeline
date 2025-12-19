@@ -135,7 +135,7 @@ for b in buildings:
 
 print(f"Total sensors: {len(sensors)}")
 
-# === Boucle de simulation ===
+
 while True:
     for sensor in sensors:
         reading = sensor.generate_reading()

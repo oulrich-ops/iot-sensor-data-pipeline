@@ -40,7 +40,7 @@ def write_alerts_to_postgres(batch_df, batch_id):
         if batch_df.count() == 0:
             print(f"[Batch {batch_id}] No alerts to write")
             return
-
+        
         (
             batch_df
             .write
