@@ -1,6 +1,11 @@
 import time
 from pathlib import Path
 from dotenv import load_dotenv
+from spark_processing.alert_detector import start_alert_detector
+from spark_processing.data_persistance import start_data_persistance
+from spark_processing.data_agregator import start_data_agregator
+from spark_processing.gestionnaire_mail import main as mail_main
+from spark_processing.utils import build_spark_session
 
 # Load env from project root
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -12,17 +17,9 @@ else:
 
 
 def main():
-    # Import here so modules can be used standalone too
-    from spark_processing.utils import build_spark_session
-
-    # Build one SparkSession with required packages
+    
     spark = build_spark_session("spark_processing_orchestrator")
-
-    # Import module start functions
-    from spark_processing.alert_detector import start_alert_detector
-    from spark_processing.data_persistance import start_data_persistance
-    from spark_processing.data_agregator import start_data_agregator
-    from spark_processing.gestionnaire_mail import main as mail_main
+    
 
     queries = []
     try:
