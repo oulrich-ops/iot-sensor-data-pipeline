@@ -1,0 +1,72 @@
+Déploiement  — iot-sensor-data-pipeline
+
+Résumé
+- Pipeline IoT temps réel : simulateur -> Kafka -> Spark Streaming -> PostgreSQL -> Superset (+ envoi d'emails pour alertes).
+
+Prérequis
+- Docker & Docker Compose
+- Python 3.10+
+- Java 8+ (pour Spark)
+- Ports libres : 9092 (Kafka), 5432 (Postgres), 8088 (Superset)
+
+1) Cloner le dépôt
+$ git clone https://github.com/oulrich-ops/iot-sensor-data-pipeline
+$ cd iot-sensor-data-pipeline
+
+2) Variables d'environnement
+Créer un fichier `.env` à la racine (exemple minimal) :
+POSTGRES_DB=sensor_data
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+KAFKA_BOOTSTRAP_SERVER=localhost:9092
+KAFKA_TOPIC_IOT_SENSOR=iot-sensor-data
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=you@example.com
+SMTP_PASS=yourpassword
+ALERT_RECIPIENT=recipient@example.com
+
+3) Installer dépendances Python
+# créer et activer venv
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# Linux/Mac
+source venv/bin/activate
+# installer
+pip install -r requirements.txt
+
+4) Démarrer les services Docker
+docker-compose up -d
+vérifier : docker-compose ps
+
+5) Créer les topics Kafka (exécuter dans le conteneur broker ou depuis l'interface UI localhost:8080)
+# entrer dans le conteneur
+docker exec -it broker bash
+# créer topic principal
+/opt/kafka/bin/kafka-topics.sh --create --bootstrap-server broker:29092 --replication-factor 1 --partitions 3 --topic iot-sensor-data
+# quitter
+exit
+
+6) Démarrer le simulateur
+venv\Scripts\activate  # ou source venv/bin/activate
+python -m simulators.sensor_simulator
+
+7) Démarrer le traitement Spark (qui contient aussi le gestionnaire de mail)
+venv\Scripts\activate
+python -m spark_processing.main
+
+
+
+Vérifications rapides
+- Consommer messages Kafka : http://localhost:8080
+- Vérifier tables PostgreSQL : docker exec -it <postgres-container> psql -U postgres -d sensor_data #ou via dbeaver
+- Accéder à Superset : http://localhost:8088 (creds par défaut si non modifiées)
+
+Arrêt et nettoyage
+# arrêter conteneurs
+docker-compose down
+# arrêter et supprimer volumes (si besoin)
+docker-compose down -v
+
+
